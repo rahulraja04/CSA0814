@@ -1,0 +1,626 @@
+# ============================================================
+# ASSIGNMENT 5 - PYTHON PROGRAMMING
+# ============================================================
+
+
+# ============================================================
+# TASK A1 - DESIGN THE DATA ACQUISITION
+# ============================================================
+
+# A1.2 - SQL Table Creation
+
+import sqlite3
+
+conn = sqlite3.connect("air_quality.db")
+cursor = conn.cursor()
+
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS Stations (
+    station_id INTEGER PRIMARY KEY,
+    station_name TEXT NOT NULL,
+    location TEXT
+)
+""")
+
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS Readings (
+    reading_id INTEGER PRIMARY KEY,
+    station_id INTEGER,
+    reading_date TEXT,
+    pm25 REAL,
+    temperature REAL,
+    FOREIGN KEY (station_id)
+    REFERENCES Stations(station_id)
+)
+""")
+
+conn.commit()
+
+
+# A1.3 - Average PM2.5 Using CSV
+
+import csv
+
+total = 0
+count = 0
+
+with open("air_quality.csv") as file:
+    reader = csv.DictReader(file)
+
+    for row in reader:
+        if row["PM2.5"]:
+            total += float(row["PM2.5"])
+            count += 1
+
+if count > 0:
+    print("Average PM2.5:", total / count)
+
+
+# Average PM2.5 Using SQL
+
+query = """
+SELECT AVG(pm25)
+FROM Readings
+"""
+
+cursor.execute(query)
+print("SQL Average:", cursor.fetchone())
+
+
+# ============================================================
+# TASK A2 - DESIGN THE CLEANING AND NORMALISATION
+# ============================================================
+
+# A2.2 - Min-Max Normalisation
+
+data = [10, 20, 30, 40, 50]
+
+minimum = min(data)
+maximum = max(data)
+
+normalised = [
+    (x - minimum) / (maximum - minimum)
+    for x in data
+]
+
+print("Min-Max:", normalised)
+
+
+# ============================================================
+# TASK A3 - DESIGN THE ANALYSIS AND VISUALISATION
+# ============================================================
+
+import pandas as pd
+
+df = pd.read_csv("air_quality.csv")
+
+summary = df.groupby("Date")["PM2.5"].agg(
+    ["min", "max", "mean"]
+)
+
+print(summary)
+
+
+# ============================================================
+# TASK A4 - PLAN DEBUGGING AND PROFILING
+# ============================================================
+
+# A4.1 - Print Statement
+
+print("PM2.5 Value:", 45)
+
+
+# Assert Statement
+
+pm25 = 45
+
+assert pm25 >= 0
+
+
+# Logging
+
+import logging
+
+logging.basicConfig(level=logging.INFO)
+
+logging.info("Data loaded successfully")
+logging.warning("Missing values found")
+
+
+# PDB Debugging
+
+import pdb
+
+# Uncomment the next line when debugging:
+# pdb.set_trace()
+
+
+# A4.2 - time.perf_counter()
+
+import time
+
+start = time.perf_counter()
+
+for i in range(100000):
+    pass
+
+end = time.perf_counter()
+
+print("Time:", end - start)
+
+
+# timeit
+
+import timeit
+
+result = timeit.timeit(
+    "sum(range(1000))",
+    number=1000
+)
+
+print(result)
+
+
+# cProfile
+
+import cProfile
+
+def calculate():
+    total = 0
+
+    for i in range(10000):
+        total += i
+
+cProfile.run("calculate()")
+
+
+# ============================================================
+# TASK A5 - DESIGN AN AI APPLICATION FOR CITIZEN COMPLAINTS
+# ============================================================
+
+# A5.1 - Sentiment Analysis
+
+positive = ["good", "excellent", "happy"]
+negative = ["bad", "poor", "worst"]
+
+
+def score(text):
+    words = text.lower().split()
+    total = 0
+
+    for word in words:
+        if word in positive:
+            total += 1
+        elif word in negative:
+            total -= 1
+
+    if total > 0:
+        return "Positive"
+
+    elif total < 0:
+        return "Negative"
+
+    else:
+        return "Neutral"
+
+
+print(score("The service is good"))
+print(score("The road condition is bad"))
+
+
+# A5.2 - Basic Chatbot
+
+def chatbot(message):
+    message = message.lower()
+
+    if "water" in message:
+        return "Please register a water supply complaint."
+
+    elif "road" in message:
+        return "Your road complaint will be registered."
+
+    elif "garbage" in message:
+        return "Please report the garbage location."
+
+    elif "hello" in message:
+        return "Hello! How can I help you?"
+
+    else:
+        return "Sorry, I cannot understand your query."
+
+
+print(chatbot("I have a water problem"))
+
+
+# ============================================================
+# TASK B1 - IMPLEMENT AND VALIDATE THE CLEANING PIPELINE
+# ============================================================
+
+# B1.1 - Cleaning Rules
+
+import pandas as pd
+
+
+def load_clean(filename):
+
+    df = pd.read_csv(filename)
+
+    df.columns = df.columns.str.strip()
+
+    required = [
+        "Station_Name",
+        "Date",
+        "PM2.5",
+        "Temperature"
+    ]
+
+    for col in required:
+        if col not in df.columns:
+            raise ValueError("Missing column: " + col)
+
+    df["Station_Name"] = (
+        df["Station_Name"]
+        .astype("string")
+        .str.strip()
+        .str.title()
+    )
+
+    df["Date"] = pd.to_datetime(
+        df["Date"],
+        errors="coerce"
+    )
+
+    df["PM2.5"] = pd.to_numeric(
+        df["PM2.5"],
+        errors="coerce"
+    )
+
+    df["Temperature"] = pd.to_numeric(
+        df["Temperature"],
+        errors="coerce"
+    )
+
+    df = df.dropna(
+        subset=["Station_Name", "Date", "PM2.5"]
+    )
+
+    df = df[df["PM2.5"] >= 0]
+
+    df = df.drop_duplicates()
+
+    df["Temperature"] = df["Temperature"].fillna(
+        df["Temperature"].median()
+    )
+
+    df["Date"] = df["Date"].dt.strftime("%Y-%m-%d")
+
+    return df
+
+
+# Min-Max Normalisation
+
+def min_max(data):
+
+    minimum = min(data)
+    maximum = max(data)
+
+    if maximum == minimum:
+        return [0 for x in data]
+
+    return [
+        (x - minimum) / (maximum - minimum)
+        for x in data
+    ]
+
+
+df = load_clean("air_quality.csv")
+
+print(df)
+
+print("Normalised PM2.5:")
+
+print(min_max(df["PM2.5"].tolist()))
+
+
+# B1.3 - Load to SQLite and Run Queries
+
+import sqlite3
+
+conn = sqlite3.connect("air_quality.db")
+
+df.to_sql(
+    "Readings",
+    conn,
+    if_exists="replace",
+    index=False
+)
+
+query = """
+SELECT Station_Name, AVG(PM2.5)
+FROM Readings
+GROUP BY Station_Name
+"""
+
+result = pd.read_sql_query(query, conn)
+
+print(result)
+
+conn.close()
+
+
+# B1.4 - Produce and Interpret Charts
+
+import matplotlib.pyplot as plt
+
+plt.plot(
+    df["Date"],
+    df["PM2.5"],
+    marker="o"
+)
+
+plt.xlabel("Date")
+plt.ylabel("PM2.5")
+
+plt.title("Daily Air Quality Trend")
+
+plt.xticks(rotation=45)
+
+plt.tight_layout()
+
+plt.show()
+
+
+# ============================================================
+# TASK B2 - ENGINEER ADVERSARIAL DATA
+# ============================================================
+
+# 1. Wrong Delimiters
+
+df = pd.read_csv(
+    "air_quality.csv",
+    sep=";"
+)
+
+
+# 2. Encoding Problems
+
+df = pd.read_csv(
+    "air_quality.csv",
+    encoding="latin1"
+)
+
+
+# 3. Empty Files
+
+import pandas as pd
+
+try:
+    df = pd.read_csv("empty.csv")
+
+except pd.errors.EmptyDataError:
+    print("The CSV file is empty")
+
+
+# 4. SQL Injection Testing - Unsafe Method
+
+station = input("Enter station name: ")
+
+query = (
+    "SELECT * FROM Readings WHERE Station_Name = '"
+    + station + "'"
+)
+
+print(query)
+
+
+# 5. SQL Injection Testing - Safe Method
+
+conn = sqlite3.connect("air_quality.db")
+
+cursor = conn.cursor()
+
+station = input("Enter station name: ")
+
+query = """
+SELECT * FROM Readings
+WHERE Station_Name = ?
+"""
+
+cursor.execute(query, (station,))
+
+print(cursor.fetchall())
+
+conn.close()
+
+
+# ============================================================
+# TASK B3 - LOOPS VS LIBRARIES VS SQL
+# ============================================================
+
+# 1. Python Loops
+
+values = [20, 30, 40, 50, 60]
+
+total = 0
+
+for value in values:
+    total += value
+
+average = total / len(values)
+
+print("Average:", average)
+
+
+# 2. Pandas GroupBy
+
+import pandas as pd
+
+df = pd.read_csv("air_quality.csv")
+
+result = df.groupby("Station_Name")["PM2.5"].mean()
+
+print(result)
+
+
+# 3. SQL GROUP BY
+
+conn = sqlite3.connect("air_quality.db")
+
+cursor = conn.cursor()
+
+query = """
+SELECT Station_Name, AVG(PM2.5)
+FROM Readings
+GROUP BY Station_Name;
+"""
+
+cursor.execute(query)
+
+print(cursor.fetchall())
+
+conn.close()
+
+
+# 4. Profiling Using cProfile
+
+import cProfile
+
+
+def calculate_average():
+
+    values = list(range(100000))
+
+    total = 0
+
+    for value in values:
+        total += value
+
+    return total / len(values)
+
+
+cProfile.run("calculate_average()")
+
+
+# ============================================================
+# TASK B4 - FINAL ENGINEERING DECISION
+# ============================================================
+
+# 1. Implement Sentiment Scorer
+
+positive = {
+    "good", "excellent", "clean", "happy", "better"
+}
+
+negative = {
+    "bad", "poor", "dirty", "worst", "problem"
+}
+
+
+def score(text):
+
+    words = text.lower().split()
+
+    positive_count = 0
+    negative_count = 0
+
+    for word in words:
+
+        word = word.strip(".,!?")
+
+        if word in positive:
+            positive_count += 1
+
+        elif word in negative:
+            negative_count += 1
+
+    result = positive_count - negative_count
+
+    if result > 0:
+        return "Positive"
+
+    elif result < 0:
+        return "Negative"
+
+    else:
+        return "Neutral"
+
+
+complaints = [
+    "The road is very bad",
+    "Water supply is good",
+    "Garbage collection is poor",
+    "The street is clean",
+    "The service is excellent"
+]
+
+for complaint in complaints:
+    print(complaint, ":", score(complaint))
+
+
+# 2. Extractive Summariser
+
+def summarise(text):
+
+    sentences = text.split(".")
+
+    keywords = [
+        "water",
+        "road",
+        "garbage",
+        "problem",
+        "street",
+        "service"
+    ]
+
+    best_sentence = ""
+    highest_score = 0
+
+    for sentence in sentences:
+
+        current_score = 0
+
+        for word in keywords:
+
+            if word in sentence.lower():
+                current_score += 1
+
+        if current_score > highest_score:
+            highest_score = current_score
+            best_sentence = sentence
+
+    return best_sentence.strip()
+
+
+text = "The road is damaged. Water supply is poor."
+
+print(summarise(text))
+
+
+# 3. SQL Indexing on Station and Day
+
+conn = sqlite3.connect("air_quality.db")
+
+cursor = conn.cursor()
+
+cursor.execute("""
+CREATE INDEX IF NOT EXISTS idx_station_day
+ON Readings(Station_Name, reading_date)
+""")
+
+query = """
+SELECT *
+FROM Readings
+WHERE Station_Name = 'Chennai'
+AND reading_date = '2026-01-01'
+"""
+
+cursor.execute(query)
+
+print(cursor.fetchall())
+
+conn.close()
+
+
+# ============================================================
+# END OF ASSIGNMENT 5
+# ============================================================
